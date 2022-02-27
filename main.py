@@ -47,6 +47,30 @@ def get_input_data():
     return steel_model, end_hardness_by_rok
 
 
+def get_envs_with_higher_velo(critical_velo_cel_sec):
+    envs_with_higher_velo = {}
+
+    for env in quenching_env_freeze_velo:
+        if quenching_env_freeze_velo[env]["freezing_velo"] >= critical_velo_cel_sec:
+            envs_with_higher_velo[env] = quenching_env_freeze_velo[env].copy()
+
+    return envs_with_higher_velo
+
+
+def get_min_env_key(envs_with_higher_velo):
+    envs_with_higher_velo_list_sorted = sorted(envs_with_higher_velo, key=lambda x: (
+        envs_with_higher_velo[x]["lower_temp"] is None, envs_with_higher_velo[x]["lower_temp"]))
+
+    min_env_key = envs_with_higher_velo_list_sorted[0]
+    return min_env_key
+
+def calculate_env_time(steel_model, min_temperature, min_env_key):
+    quenching_temp = steels_dict[steel_model]["quenching_temp"]
+    env_time = (quenching_temp / min_temperature)
+    env_time += (quenching_temp / quenching_env_freeze_velo[min_env_key]["freezing_velo"])
+    env_time /= 2
+    return env_time
+
 def main():
     steel_model, end_hardness_by_rok = get_input_data()
     if steel_model not in steels_dict:
@@ -57,22 +81,13 @@ def main():
 
     critical_velo_cel_sec = steels_dict[steel_model]["critical_velo_cel_sec"]
 
-    envs_with_higher_velo = {}
+    envs_with_higher_velo = get_envs_with_higher_velo(critical_velo_cel_sec)
 
-    for env in quenching_env_freeze_velo:
-        if quenching_env_freeze_velo[env]["freezing_velo"] >= critical_velo_cel_sec:
-            envs_with_higher_velo[env] = quenching_env_freeze_velo[env].copy()
+    min_env_key = get_min_env_key(envs_with_higher_velo)
 
-    envs_with_higher_velo_list_sorted = sorted(envs_with_higher_velo, key=lambda x: (
-        envs_with_higher_velo[x]["lower_temp"] is None, envs_with_higher_velo[x]["lower_temp"]))
-
-    min_env_key = envs_with_higher_velo_list_sorted[0]
     min_temperature = envs_with_higher_velo[min_env_key]["lower_temp"]
 
-    quenching_temp = steels_dict[steel_model]["quenching_temp"]
-    env_time = (quenching_temp / min_temperature)
-    env_time += (quenching_temp / quenching_env_freeze_velo[min_env_key]["freezing_velo"])
-    env_time /= 2
+    env_time = calculate_env_time(steel_model, min_temperature, min_env_key)
 
     hardness_after_quench = steels_dict[steel_model]["hardness_after_quech"]
 
